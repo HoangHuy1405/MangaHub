@@ -13,6 +13,7 @@ import (
 	"mangahub/internal/api-server/routes"
 	"mangahub/internal/repository"
 	"mangahub/internal/service"
+	"mangahub/internal/udp"
 	"mangahub/pkg/database"
 	"mangahub/pkg/utils/config"
 )
@@ -50,8 +51,21 @@ func main() {
 	userHandler := handlers.NewUserHandler(userSvc)
 	authHandler := handlers.NewAuthHandler(authSvc)
 
+	// UDP Notification Server — start in background so REST API stays independent
+	udpPort := cfg.NETWORK_CONFIG.UDP_PORT
+	udpSrv := udp.NewNotificationServer(udpPort)
+	go func() {
+		log.Printf("[MAIN] Starting UDP Notification Server on :%s", udpPort)
+		if err := udpSrv.Start(); err != nil {
+			log.Printf("[MAIN] UDP server error (non-fatal): %v", err)
+		}
+	}()
+
+	// Notify handler bridges REST API → UDP broadcast
+	notifyHandler := handlers.NewNotifyHandler(udpSrv)
+
 	// Setup Router
-	r := routes.SetupRouter(cfg, authHandler, mangaHandler, userHandler)
+	r := routes.SetupRouter(cfg, authHandler, mangaHandler, userHandler, notifyHandler)
 
 	// Server setup
 	port := cfg.API_CONFIG.API_PORT
@@ -74,6 +88,9 @@ func main() {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 	log.Println("[MAIN] Shutting down server...")
+
+	// Stop UDP notification server gracefully
+	udpSrv.Stop()
 
 	// The context is used to inform the server it has 5 seconds to finish
 	// the request it is currently handling

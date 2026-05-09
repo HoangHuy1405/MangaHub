@@ -1,0 +1,14 @@
+api:
+  api_port: "8080"
+  db_path: "data/mangahub.db"
+  jwt_secret: "super-secret-key"
+  jwt_access_token_lifetime: "24h"
+
+socket:
+  chat_rooms:
+    - "general"
+    - "announcements"
+
+network:
+  tcp_port: "9090"
+  udp_port: "9091"
