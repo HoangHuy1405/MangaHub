@@ -3,7 +3,7 @@ package config
 import (
 	"log"
 	"os"
-	"strings"
+	"regexp"
 
 	"github.com/joho/godotenv"
 	"gopkg.in/yaml.v3"
@@ -17,7 +17,7 @@ type APIConfig struct {
 }
 
 type SocketConfig struct {
-	CHAT_ROOMS []string `yaml:"chat_rooms"`
+	CHAT_ROOMS string `yaml:"chat_rooms"`
 }
 
 type NetworkConfig struct {
@@ -31,7 +31,31 @@ type Config struct {
 	NETWORK_CONFIG NetworkConfig `yaml:"network"`
 }
 
-// LoadConfig loads yaml configuration and then applies environment variable overrides.
+// Regex to match ${VAR:-default}
+var envVarWithDefaultRe = regexp.MustCompile(`\$\{([a-zA-Z_][a-zA-Z0-9_]*):-([^}]*)\}`)
+
+// expandEnvWithDefault replaces ${VAR:-default} patterns in the YAML file 
+// with actual environment variables, falling back to the default if not set.
+func expandEnvWithDefault(content []byte) []byte {
+	// First expand ${VAR:-default}
+	expanded := envVarWithDefaultRe.ReplaceAllFunc(content, func(match []byte) []byte {
+		submatches := envVarWithDefaultRe.FindSubmatch(match)
+		if len(submatches) == 3 {
+			key := string(submatches[1])
+			fallback := string(submatches[2])
+			if val, exists := os.LookupEnv(key); exists && val != "" {
+				return []byte(val)
+			}
+			return []byte(fallback)
+		}
+		return match
+	})
+	
+	// Then expand regular ${VAR} or $VAR (if any exist without defaults)
+	return []byte(os.ExpandEnv(string(expanded)))
+}
+
+// LoadConfig loads yaml configuration. Environment variables are injected into yaml directly.
 func LoadConfig() (*Config, error) {
 	// 1. Load .env file (if exists) into system ENV
 	if err := godotenv.Load(); err != nil {
@@ -40,44 +64,23 @@ func LoadConfig() (*Config, error) {
 
 	cfg := &Config{}
 
-	// 2. Read config.yaml (Base config)
+	// 2. Read config.yaml
 	yamlFile, err := os.ReadFile("config.yaml")
-	if err == nil {
-		if err := yaml.Unmarshal(yamlFile, cfg); err != nil {
-			log.Printf("[CONFIG] Error parsing config.yaml: %v\n", err)
-		} else {
-			log.Println("[CONFIG] Loaded base configuration from config.yaml")
-		}
+	if err != nil {
+		log.Println("[CONFIG] WARNING: No config.yaml found, app may fail if defaults aren't provided.")
+		// Return empty struct so it doesn't crash, though it will lack defaults
+		return cfg, nil
+	}
+
+	// 3. Expand ENV variables inside YAML content
+	expandedYaml := expandEnvWithDefault(yamlFile)
+
+	// 4. Parse YAML into struct
+	if err := yaml.Unmarshal(expandedYaml, cfg); err != nil {
+		log.Printf("[CONFIG] Error parsing config.yaml: %v\n", err)
 	} else {
-		log.Println("[CONFIG] No config.yaml found, relying entirely on ENV / hardcoded defaults")
+		log.Println("[CONFIG] Successfully loaded configuration from config.yaml (ENV merged)")
 	}
-
-	// Helper to fallback to YAML -> then hardcoded default
-	fallbackStr := func(yamlVal, defaultVal string) string {
-		if yamlVal != "" {
-			return yamlVal
-		}
-		return defaultVal
-	}
-	
-	fallbackList := func(yamlVal []string, defaultVal string) []string {
-		if len(yamlVal) > 0 {
-			return yamlVal
-		}
-		return []string{defaultVal}
-	}
-
-	// 3. Apply ENV overrides (ENV wins over YAML)
-	cfg.API_CONFIG.API_PORT = getEnvAsStr("API_PORT", fallbackStr(cfg.API_CONFIG.API_PORT, "8080"))
-	cfg.API_CONFIG.DB_PATH = getEnvAsStr("DB_PATH", fallbackStr(cfg.API_CONFIG.DB_PATH, "data/mangahub.db"))
-	cfg.API_CONFIG.JWT_SECRET = getEnvAsStr("JWT_SECRET", fallbackStr(cfg.API_CONFIG.JWT_SECRET, "super-secret-key"))
-	cfg.API_CONFIG.JWT_ACCESS_TOKEN_LIFETIME = getEnvAsStr("JWT_ACCESS_TOKEN_LIFETIME", fallbackStr(cfg.API_CONFIG.JWT_ACCESS_TOKEN_LIFETIME, "24h"))
-	
-	cfg.SOCKET_CONFIG.CHAT_ROOMS = getEnvAsListStr("CHAT_ROOMS", fallbackList(cfg.SOCKET_CONFIG.CHAT_ROOMS, "general"))
-	
-	cfg.NETWORK_CONFIG.TCP_PORT = getEnvAsStr("TCP_PORT", fallbackStr(cfg.NETWORK_CONFIG.TCP_PORT, "9090"))
-	cfg.NETWORK_CONFIG.UDP_PORT = getEnvAsStr("UDP_PORT", fallbackStr(cfg.NETWORK_CONFIG.UDP_PORT, "9091"))
-
 
 	// Warn if using default secret
 	if cfg.API_CONFIG.JWT_SECRET == "super-secret-key" {
@@ -85,18 +88,4 @@ func LoadConfig() (*Config, error) {
 	}
 
 	return cfg, nil
-}
-
-func getEnvAsStr(key, fallback string) string {
-	if value, exists := os.LookupEnv(key); exists && value != "" {
-		return value
-	}
-	return fallback
-}
-
-func getEnvAsListStr(key string, fallback []string) []string {
-	if value, exists := os.LookupEnv(key); exists && value != "" {
-		return strings.Split(value, ",")
-	}
-	return fallback
 }
