@@ -3,6 +3,8 @@ package handlers
 import (
 	"errors"
 	"log"
+	"math"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 
@@ -24,21 +26,39 @@ func (h *MangaHandler) GetAllManga(c *gin.Context) {
 	genre := c.Query("genre")
 	status := c.Query("status")
 	search := c.Query("search")
+	pageStr := c.DefaultQuery("page", "1")
+	pageSizeStr := c.DefaultQuery("pageSize", "20")
 
-	log.Printf("[MANGA] Filters — genre=%q, status=%q, search=%q", genre, status, search)
+	page, err := strconv.Atoi(pageStr)
+	if err != nil || page < 1 {
+		page = 1
+	}
+	pageSize, err := strconv.Atoi(pageSizeStr)
+	if err != nil || pageSize < 1 {
+		pageSize = 20
+	}
 
-	mangaList, err := h.service.GetAllManga(genre, status, search)
+	log.Printf("[MANGA] Filters — genre=%q, status=%q, search=%q, page=%d, pageSize=%d", genre, status, search, page, pageSize)
+
+	mangaList, total, err := h.service.GetAllManga(genre, status, search, page, pageSize)
 	if err != nil {
 		log.Printf("[MANGA] Service error: %v", err)
 		utils.InternalError(c, "Failed to fetch manga list")
 		return
 	}
 
+	pages := int(math.Ceil(float64(total) / float64(pageSize)))
+
 	log.Printf("[MANGA] Returning %d manga records", len(mangaList))
 
 	utils.Success(c, 200, "Manga list retrieved successfully", gin.H{
 		"manga": mangaList,
-		"count": len(mangaList),
+		"meta": gin.H{
+			"page":     page,
+			"pageSize": pageSize,
+			"pages":    pages,
+			"total":    total,
+		},
 	})
 }
 

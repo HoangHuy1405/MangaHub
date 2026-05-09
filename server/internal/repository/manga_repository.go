@@ -8,7 +8,7 @@ import (
 )
 
 type MangaRepository interface {
-	GetAll(genre, status, search string) ([]models.Manga, error)
+	GetAll(genre, status, search string, page, pageSize int) ([]models.Manga, int, error)
 	FindByID(id string) (*models.Manga, error)
 	GetRelationships(mangaID string) ([]models.MangaRelationship, error)
 	Exists(id string) (bool, error)
@@ -22,29 +22,42 @@ func NewMangaRepository(db *sql.DB) MangaRepository {
 	return &mangaRepositoryImpl{db: db}
 }
 
-func (r *mangaRepositoryImpl) GetAll(genre, status, search string) ([]models.Manga, error) {
-	query := `SELECT id, title, author, genres, status, total_chapters, description, cover_url,
-	           year, content_rating, demographic, original_language FROM manga WHERE 1=1`
+func (r *mangaRepositoryImpl) GetAll(genre, status, search string, page, pageSize int) ([]models.Manga, int, error) {
+	// 1. Build base query
+	baseQuery := " FROM manga WHERE 1=1"
 	args := []interface{}{}
 
 	if genre != "" {
-		query += " AND genres LIKE ?"
+		baseQuery += " AND genres LIKE ?"
 		args = append(args, "%\""+genre+"\"%")
 	}
 	if status != "" {
-		query += " AND status = ?"
+		baseQuery += " AND status = ?"
 		args = append(args, status)
 	}
 	if search != "" {
-		query += " AND (title LIKE ? OR author LIKE ?)"
+		baseQuery += " AND (title LIKE ? OR author LIKE ?)"
 		args = append(args, "%"+search+"%", "%"+search+"%")
 	}
 
-	query += " ORDER BY title ASC"
+	// 2. Count total records
+	var total int
+	countQuery := "SELECT COUNT(*)" + baseQuery
+	if err := r.db.QueryRow(countQuery, args...).Scan(&total); err != nil {
+		return nil, 0, fmt.Errorf("count total manga: %w", err)
+	}
+
+	// 3. Fetch paginated data
+	query := `SELECT id, title, author, genres, status, total_chapters, description, cover_url,
+	           year, content_rating, demographic, original_language` + baseQuery
+	
+	query += " ORDER BY title ASC LIMIT ? OFFSET ?"
+	offset := (page - 1) * pageSize
+	args = append(args, pageSize, offset)
 
 	rows, err := r.db.Query(query, args...)
 	if err != nil {
-		return nil, fmt.Errorf("query manga list: %w", err)
+		return nil, 0, fmt.Errorf("query manga list: %w", err)
 	}
 	defer rows.Close()
 
@@ -55,16 +68,16 @@ func (r *mangaRepositoryImpl) GetAll(genre, status, search string) ([]models.Man
 			&m.ID, &m.Title, &m.Author, &m.Genres, &m.Status, &m.TotalChapters,
 			&m.Description, &m.CoverURL, &m.Year, &m.ContentRating, &m.Demographic, &m.OriginalLanguage,
 		); err != nil {
-			return nil, fmt.Errorf("scan manga row: %w", err)
+			return nil, 0, fmt.Errorf("scan manga row: %w", err)
 		}
 		mangaList = append(mangaList, m)
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("iterate manga rows: %w", err)
+		return nil, 0, fmt.Errorf("iterate manga rows: %w", err)
 	}
 
-	return mangaList, nil
+	return mangaList, total, nil
 }
 
 // nullStr converts sql.NullString to *string for nullable model fields.
