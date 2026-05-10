@@ -21,8 +21,10 @@ type SocketConfig struct {
 }
 
 type NetworkConfig struct {
-	TCP_PORT string `yaml:"tcp_port"`
-	UDP_PORT string `yaml:"udp_port"`
+	TCP_PORT  string `yaml:"tcp_port"`
+	UDP_PORT  string `yaml:"udp_port"`
+	WS_PORT   string `yaml:"ws_port"`
+	GRPC_PORT string `yaml:"grpc_port"`
 }
 
 type Config struct {

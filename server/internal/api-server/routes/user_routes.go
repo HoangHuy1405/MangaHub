@@ -13,6 +13,8 @@ func RegisterUserRoutes(rg *gin.RouterGroup, handler *handlers.UserHandler, jwtS
 	{
 		userRoutes.POST("/library", handler.AddToLibrary)
 		userRoutes.GET("/library", handler.GetLibrary)
+		userRoutes.PUT("/library/:id", handler.UpdateLibrary)
+		userRoutes.DELETE("/library/:id", handler.RemoveFromLibrary)
 		userRoutes.PUT("/progress", handler.UpdateProgress)
 	}
 }

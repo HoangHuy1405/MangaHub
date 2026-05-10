@@ -10,3 +10,5 @@ socket:
 network:
   tcp_port: "${TCP_PORT:-9090}"
   udp_port: "${UDP_PORT:-9091}"
+  ws_port: "${WS_PORT:-9093}"
+  grpc_port: "${GRPC_PORT:-9092}"

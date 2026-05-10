@@ -26,6 +26,13 @@ func (h *MangaHandler) GetAllManga(c *gin.Context) {
 	genre := c.Query("genre")
 	status := c.Query("status")
 	search := c.Query("search")
+	author := c.Query("author")
+	yearFromStr := c.Query("year-from")
+	yearToStr := c.Query("year-to")
+	minChaptersStr := c.Query("min-chapters")
+	sortBy := c.Query("sort-by")
+	order := c.Query("order")
+
 	pageStr := c.DefaultQuery("page", "1")
 	pageSizeStr := c.DefaultQuery("pageSize", "20")
 
@@ -38,9 +45,13 @@ func (h *MangaHandler) GetAllManga(c *gin.Context) {
 		pageSize = 20
 	}
 
+	yearFrom, _ := strconv.Atoi(yearFromStr)
+	yearTo, _ := strconv.Atoi(yearToStr)
+	minChapters, _ := strconv.Atoi(minChaptersStr)
+
 	log.Printf("[MANGA] Filters — genre=%q, status=%q, search=%q, page=%d, pageSize=%d", genre, status, search, page, pageSize)
 
-	mangaList, total, err := h.service.GetAllManga(genre, status, search, page, pageSize)
+	mangaList, total, err := h.service.GetAllManga(genre, status, search, author, yearFrom, yearTo, minChapters, sortBy, order, page, pageSize)
 	if err != nil {
 		log.Printf("[MANGA] Service error: %v", err)
 		utils.InternalError(c, "Failed to fetch manga list")

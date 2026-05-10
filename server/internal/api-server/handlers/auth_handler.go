@@ -25,15 +25,15 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	var input models.RegisterInput
 	if err := c.ShouldBindJSON(&input); err != nil {
 		log.Printf("[AUTH] Register validation failed: %v", err)
-		utils.BadRequest(c, "Invalid input: username (min 3 chars) and password (min 6 chars) are required")
+		utils.BadRequest(c, "Invalid input: username, email and password (min 8 chars) are required")
 		return
 	}
 
 	id, err := h.service.Register(input)
 	if err != nil {
 		if errors.Is(err, service.ErrConflict) {
-			log.Printf("[AUTH] Username already exists: %s", input.Username)
-			utils.Conflict(c, "Username already exists")
+			log.Printf("[AUTH] Username or email already exists: %s, %s", input.Username, input.Email)
+			utils.Conflict(c, "Username or email already exists")
 			return
 		}
 		log.Printf("[AUTH] Service error: %v", err)
@@ -46,6 +46,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	utils.Created(c, "User registered successfully", gin.H{
 		"id":       id,
 		"username": input.Username,
+		"email":    input.Email,
 	})
 }
 
@@ -55,15 +56,15 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	var input models.LoginInput
 	if err := c.ShouldBindJSON(&input); err != nil {
 		log.Printf("[AUTH] Login validation failed: %v", err)
-		utils.BadRequest(c, "Username and password are required")
+		utils.BadRequest(c, "Username (or email) and password are required")
 		return
 	}
 
 	tokenString, user, err := h.service.Login(input)
 	if err != nil {
 		if errors.Is(err, service.ErrUnauthorized) {
-			log.Printf("[AUTH] Login failed for user: %s", input.Username)
-			utils.Unauthorized(c, "Invalid username or password")
+			log.Printf("[AUTH] Login failed for user/email: %s %s", input.Username, input.Email)
+			utils.Unauthorized(c, "Invalid credentials")
 			return
 		}
 		log.Printf("[AUTH] Service error: %v", err)

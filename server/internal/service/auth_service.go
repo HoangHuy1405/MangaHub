@@ -31,7 +31,7 @@ func (s *authServiceImpl) Register(input models.RegisterInput) (int64, error) {
 		return 0, fmt.Errorf("hash password: %w", err)
 	}
 
-	id, err := s.repo.CreateUser(input.Username, string(hashedPassword))
+	id, err := s.repo.CreateUser(input.Username, input.Email, string(hashedPassword))
 	if err != nil {
 		return 0, ErrConflict
 	}
@@ -40,7 +40,15 @@ func (s *authServiceImpl) Register(input models.RegisterInput) (int64, error) {
 }
 
 func (s *authServiceImpl) Login(input models.LoginInput) (string, *models.User, error) {
-	user, err := s.repo.FindByUsername(input.Username)
+	var user *models.User
+	var err error
+
+	if input.Email != "" {
+		user, err = s.repo.FindByEmail(input.Email)
+	} else {
+		user, err = s.repo.FindByUsername(input.Username)
+	}
+
 	if err != nil {
 		return "", nil, fmt.Errorf("find user: %w", err)
 	}

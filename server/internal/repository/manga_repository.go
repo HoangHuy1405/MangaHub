@@ -8,7 +8,7 @@ import (
 )
 
 type MangaRepository interface {
-	GetAll(genre, status, search string, page, pageSize int) ([]models.Manga, int, error)
+	GetAll(genre, status, search, author string, yearFrom, yearTo, minChapters int, sortBy, order string, page, pageSize int) ([]models.Manga, int, error)
 	FindByID(id string) (*models.Manga, error)
 	GetRelationships(mangaID string) ([]models.MangaRelationship, error)
 	Exists(id string) (bool, error)
@@ -22,7 +22,7 @@ func NewMangaRepository(db *sql.DB) MangaRepository {
 	return &mangaRepositoryImpl{db: db}
 }
 
-func (r *mangaRepositoryImpl) GetAll(genre, status, search string, page, pageSize int) ([]models.Manga, int, error) {
+func (r *mangaRepositoryImpl) GetAll(genre, status, search, author string, yearFrom, yearTo, minChapters int, sortBy, order string, page, pageSize int) ([]models.Manga, int, error) {
 	// 1. Build base query
 	baseQuery := " FROM manga WHERE 1=1"
 	args := []interface{}{}
@@ -39,6 +39,22 @@ func (r *mangaRepositoryImpl) GetAll(genre, status, search string, page, pageSiz
 		baseQuery += " AND (title LIKE ? OR author LIKE ?)"
 		args = append(args, "%"+search+"%", "%"+search+"%")
 	}
+	if author != "" {
+		baseQuery += " AND author LIKE ?"
+		args = append(args, "%"+author+"%")
+	}
+	if yearFrom > 0 {
+		baseQuery += " AND year >= ?"
+		args = append(args, yearFrom)
+	}
+	if yearTo > 0 {
+		baseQuery += " AND year <= ?"
+		args = append(args, yearTo)
+	}
+	if minChapters > 0 {
+		baseQuery += " AND total_chapters >= ?"
+		args = append(args, minChapters)
+	}
 
 	// 2. Count total records
 	var total int
@@ -51,7 +67,23 @@ func (r *mangaRepositoryImpl) GetAll(genre, status, search string, page, pageSiz
 	query := `SELECT id, title, author, genres, status, total_chapters, description, cover_url,
 	           year, content_rating, demographic, original_language` + baseQuery
 	
-	query += " ORDER BY title ASC LIMIT ? OFFSET ?"
+	orderDir := "ASC"
+	if order == "desc" {
+		orderDir = "DESC"
+	}
+	switch sortBy {
+	case "popularity":
+		// SQLite has no popularity out of the box, sort by total_chapters as a proxy or id
+		query += " ORDER BY total_chapters " + orderDir
+	case "title":
+		query += " ORDER BY title " + orderDir
+	case "year":
+		query += " ORDER BY year " + orderDir
+	default:
+		query += " ORDER BY title ASC"
+	}
+	
+	query += " LIMIT ? OFFSET ?"
 	offset := (page - 1) * pageSize
 	args = append(args, pageSize, offset)
 

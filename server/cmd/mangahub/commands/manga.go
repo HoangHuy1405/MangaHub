@@ -26,8 +26,8 @@ func NewMangaCmd(cfg *cliclient.CLIConfig) *cobra.Command {
 // ── search ────────────────────────────────────────────────────────────────────
 
 func newMangaSearchCmd(cfg *cliclient.CLIConfig) *cobra.Command {
-	var genre, status string
-	var limit int
+	var genre, status, author, sortBy, order string
+	var yearFrom, yearTo, minChapters, limit int
 	cmd := &cobra.Command{
 		Use:     "search <query>",
 		Short:   "Search for manga by title, genre, or status",
@@ -43,6 +43,24 @@ func newMangaSearchCmd(cfg *cliclient.CLIConfig) *cobra.Command {
 			}
 			if status != "" {
 				path += "&status=" + status
+			}
+			if author != "" {
+				path += "&author=" + author
+			}
+			if yearFrom > 0 {
+				path += fmt.Sprintf("&year-from=%d", yearFrom)
+			}
+			if yearTo > 0 {
+				path += fmt.Sprintf("&year-to=%d", yearTo)
+			}
+			if minChapters > 0 {
+				path += fmt.Sprintf("&min-chapters=%d", minChapters)
+			}
+			if sortBy != "" {
+				path += "&sort-by=" + sortBy
+			}
+			if order != "" {
+				path += "&order=" + order
 			}
 			if limit > 0 {
 				path += fmt.Sprintf("&pageSize=%d", limit)
@@ -104,6 +122,12 @@ func newMangaSearchCmd(cfg *cliclient.CLIConfig) *cobra.Command {
 	}
 	cmd.Flags().StringVar(&genre, "genre", "", "Filter by genre")
 	cmd.Flags().StringVar(&status, "status", "", "Filter by status (ongoing/completed)")
+	cmd.Flags().StringVar(&author, "author", "", "Filter by author")
+	cmd.Flags().IntVar(&yearFrom, "year-from", 0, "Minimum year")
+	cmd.Flags().IntVar(&yearTo, "year-to", 0, "Maximum year")
+	cmd.Flags().IntVar(&minChapters, "min-chapters", 0, "Minimum chapters")
+	cmd.Flags().StringVar(&sortBy, "sort-by", "", "Sort by (popularity/title/year)")
+	cmd.Flags().StringVar(&order, "order", "", "Sort order (asc/desc)")
 	cmd.Flags().IntVar(&limit, "limit", 20, "Maximum results to return")
 	return cmd
 }

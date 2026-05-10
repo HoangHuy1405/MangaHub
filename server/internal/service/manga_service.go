@@ -8,7 +8,7 @@ import (
 )
 
 type MangaService interface {
-	GetAllManga(genre, status, search string, page, pageSize int) ([]models.Manga, int, error)
+	GetAllManga(genre, status, search, author string, yearFrom, yearTo, minChapters int, sortBy, order string, page, pageSize int) ([]models.Manga, int, error)
 	GetMangaByID(id string) (*models.MangaDetail, error)
 }
 
@@ -20,8 +20,8 @@ func NewMangaService(repo repository.MangaRepository) MangaService {
 	return &mangaServiceImpl{repo: repo}
 }
 
-func (s *mangaServiceImpl) GetAllManga(genre, status, search string, page, pageSize int) ([]models.Manga, int, error) {
-	mangaList, total, err := s.repo.GetAll(genre, status, search, page, pageSize)
+func (s *mangaServiceImpl) GetAllManga(genre, status, search, author string, yearFrom, yearTo, minChapters int, sortBy, order string, page, pageSize int) ([]models.Manga, int, error) {
+	mangaList, total, err := s.repo.GetAll(genre, status, search, author, yearFrom, yearTo, minChapters, sortBy, order, page, pageSize)
 	if err != nil {
 		return nil, 0, fmt.Errorf("get all manga: %w", err)
 	}

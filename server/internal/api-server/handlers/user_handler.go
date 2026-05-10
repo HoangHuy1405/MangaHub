@@ -54,9 +54,11 @@ func (h *UserHandler) AddToLibrary(c *gin.Context) {
 func (h *UserHandler) GetLibrary(c *gin.Context) {
 	userID := c.GetInt("user_id")
 	statusFilter := c.Query("status")
+	sortBy := c.Query("sort_by")
+	order := c.Query("order")
 	log.Printf("[USER] GetLibrary request from user_id=%d, status_filter=%q", userID, statusFilter)
 
-	entries, err := h.service.GetLibrary(userID, statusFilter)
+	entries, err := h.service.GetLibrary(userID, statusFilter, sortBy, order)
 	if err != nil {
 		log.Printf("[USER] Service error: %v", err)
 		utils.InternalError(c, "Failed to fetch library")
@@ -69,6 +71,37 @@ func (h *UserHandler) GetLibrary(c *gin.Context) {
 		"library": entries,
 		"count":   len(entries),
 	})
+}
+
+func (h *UserHandler) UpdateLibrary(c *gin.Context) {
+	userID := c.GetInt("user_id")
+	mangaID := c.Param("id")
+
+	var input models.UpdateLibraryInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		utils.BadRequest(c, "Invalid input")
+		return
+	}
+	input.MangaID = mangaID
+
+	err := h.service.UpdateLibrary(userID, input)
+	if err != nil {
+		utils.InternalError(c, "Failed to update library")
+		return
+	}
+	utils.Success(c, 200, "Library updated", gin.H{})
+}
+
+func (h *UserHandler) RemoveFromLibrary(c *gin.Context) {
+	userID := c.GetInt("user_id")
+	mangaID := c.Param("id")
+
+	err := h.service.RemoveFromLibrary(userID, mangaID)
+	if err != nil {
+		utils.InternalError(c, "Failed to remove from library")
+		return
+	}
+	utils.Success(c, 200, "Removed from library", gin.H{})
 }
 
 func (h *UserHandler) UpdateProgress(c *gin.Context) {
