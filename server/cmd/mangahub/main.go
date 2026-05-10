@@ -37,6 +37,8 @@ func main() {
 		commands.NewNotifyCmd(cfg),
 		commands.NewChatCmd(cfg),
 		commands.NewGRPCCmd(cfg),
+		commands.NewStatsCmd(cfg),
+		commands.NewExportCmd(cfg),
 	)
 
 	if err := root.Execute(); err != nil {
