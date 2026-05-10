@@ -20,7 +20,7 @@ func NewProgressCmd(cfg *cliclient.CLIConfig) *cobra.Command {
 }
 
 func newProgressUpdateCmd(cfg *cliclient.CLIConfig) *cobra.Command {
-	var mangaID string
+	var mangaID, device string
 	var chapter int
 	cmd := &cobra.Command{
 		Use:     "update",
@@ -71,6 +71,7 @@ func newProgressUpdateCmd(cfg *cliclient.CLIConfig) *cobra.Command {
 			} else {
 				update := models.ProgressUpdate{
 					UserID:    cfg.Username,
+					Device:    device,
 					MangaID:   mangaID,
 					Chapter:   chapter,
 					Timestamp: time.Now().Unix(),
@@ -89,5 +90,6 @@ func newProgressUpdateCmd(cfg *cliclient.CLIConfig) *cobra.Command {
 	}
 	cmd.Flags().StringVar(&mangaID, "manga-id", "", "Manga ID")
 	cmd.Flags().IntVar(&chapter, "chapter", 0, "Chapter number")
+	cmd.Flags().StringVar(&device, "device", "mobile", "Device name (for testing sync)")
 	return cmd
 }

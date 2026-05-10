@@ -5,6 +5,7 @@ package models
 // other active connections belonging to the same user_id.
 type ProgressUpdate struct {
 	UserID    string `json:"user_id"`
+	Device    string `json:"device"`
 	MangaID   string `json:"manga_id"`
 	Chapter   int    `json:"chapter"`
 	Timestamp int64  `json:"timestamp"`

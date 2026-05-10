@@ -34,6 +34,7 @@ func (t *TCPClient) Connect(userID string) error {
 	// Send registration message (first message defines user_id for this conn)
 	reg := models.ProgressUpdate{
 		UserID:    userID,
+		Device:    "cli",
 		MangaID:   "init",
 		Chapter:   0,
 		Timestamp: time.Now().Unix(),
@@ -118,8 +119,12 @@ func (t *TCPClient) Monitor(ctx context.Context) error {
 		var update models.ProgressUpdate
 		if err := json.Unmarshal(scanner.Bytes(), &update); err == nil {
 			ts := time.Unix(update.Timestamp, 0).Format("15:04:05")
-			fmt.Printf("[%s] ← Device updated: %s → Chapter %d\n",
-				ts, update.MangaID, update.Chapter)
+			dev := update.Device
+			if dev == "" {
+				dev = "unknown"
+			}
+			fmt.Printf("[%s] ← Device '%s' updated: %s → Chapter %d\n",
+				ts, dev, update.MangaID, update.Chapter)
 		}
 	}
 
