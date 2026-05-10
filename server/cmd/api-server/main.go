@@ -14,6 +14,7 @@ import (
 	"mangahub/internal/repository"
 	"mangahub/internal/service"
 	"mangahub/internal/udp"
+	ws "mangahub/internal/websocket"
 	"mangahub/pkg/database"
 	"mangahub/pkg/utils/config"
 )
@@ -61,6 +62,16 @@ func main() {
 		}
 	}()
 
+	// WebSocket Chat Server — start in background on dedicated port
+	wsPort := cfg.NETWORK_CONFIG.WS_PORT
+	wsSrv := ws.NewChatServer(wsPort)
+	go func() {
+		log.Printf("[MAIN] Starting WebSocket Chat Server on :%s", wsPort)
+		if err := wsSrv.Start(); err != nil {
+			log.Printf("[MAIN] WebSocket server error (non-fatal): %v", err)
+		}
+	}()
+
 	// Notify handler bridges REST API → UDP broadcast
 	notifyHandler := handlers.NewNotifyHandler(udpSrv)
 
@@ -91,6 +102,9 @@ func main() {
 
 	// Stop UDP notification server gracefully
 	udpSrv.Stop()
+
+	// Stop WebSocket chat server gracefully
+	wsSrv.Stop()
 
 	// The context is used to inform the server it has 5 seconds to finish
 	// the request it is currently handling

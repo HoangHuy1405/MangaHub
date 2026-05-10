@@ -1,0 +1,32 @@
+root = "."
+tmp_dir = "tmp"
+
+[build]
+  # Build step: chỉ build các binary server và runner.
+  # go install mangahub CLI được xử lý BÊN TRONG runner.go (luôn chạy khi reload).
+  cmd = "cmd /c \"go build -o api-server-dev.exe ./cmd/api-server && go build -o tcp-server-dev.exe ./cmd/tcp-server && go build -o udp-server-dev.exe ./cmd/udp-server && go build -o grpc-server-dev.exe ./cmd/grpc-server && go build -o runner.exe ./cmd/runner\""
+  # Dùng entrypoint (chuẩn mới của Air, thay thế bin đã deprecated)
+  entrypoint = ".\\runner.exe"
+
+  # Những file sẽ được theo dõi
+  include_ext = ["go", "yaml", "md"]
+  # Bỏ qua các thư mục không cần thiết để tối ưu tốc độ
+  exclude_dir = ["assets", "tmp", "vendor", "_docs", "data"]
+
+  # Delay một chút sau khi save để gom các thay đổi lại
+  delay = 500 # ms
+  # Dừng tiến trình cũ nếu có
+  kill_delay = "500ms"
+
+  # Log build output để dễ debug
+  log = "build-errors.log"
+
+[color]
+  main = "magenta"
+  watcher = "cyan"
+  build = "yellow"
+  runner = "green"
+
+[misc]
+  # Xóa tmp_dir khi thoát
+  clean_on_exit = true

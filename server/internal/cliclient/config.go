@@ -16,6 +16,8 @@ type CLIConfig struct {
 	HTTPPort    string `json:"http_port"`
 	TCPPort     string `json:"tcp_port"`
 	UDPPort     string `json:"udp_port"`
+	WSPort      string `json:"ws_port"`
+	GRPCPort    string `json:"grpc_port"`
 	Token       string `json:"token"`
 	Username    string `json:"username"`
 }
@@ -27,6 +29,8 @@ func Default() *CLIConfig {
 		HTTPPort:   "8080",
 		TCPPort:    "9090",
 		UDPPort:    "9091",
+		GRPCPort:   "9092",
+		WSPort:     "9093",
 	}
 }
 
@@ -39,18 +43,31 @@ func configDir() (string, error) {
 	return filepath.Join(home, ".mangahub"), nil
 }
 
-// Load reads the persisted CLI config from ~/.mangahub/config.json.
+// configFilePath returns the absolute path to the config file.
+// Allows override via MANGAHUB_CONFIG environment variable for multi-device testing.
+func configFilePath() (string, error) {
+	if envPath := os.Getenv("MANGAHUB_CONFIG"); envPath != "" {
+		return envPath, nil
+	}
+	dir, err := configDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(dir, configFileName), nil
+}
+
+// Load reads the persisted CLI config.
 // If the file doesn't exist, it returns Default() and creates the directory.
 func Load() (*CLIConfig, error) {
-	dir, err := configDir()
+	path, err := configFilePath()
 	if err != nil {
 		return Default(), nil
 	}
+	dir := filepath.Dir(path)
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return Default(), nil
 	}
 
-	path := filepath.Join(dir, configFileName)
 	data, err := os.ReadFile(path)
 	if err != nil {
 		// First run — return defaults, no error
@@ -64,12 +81,13 @@ func Load() (*CLIConfig, error) {
 	return cfg, nil
 }
 
-// Save writes the CLI config to ~/.mangahub/config.json.
+// Save writes the CLI config to the resolved config file path.
 func (c *CLIConfig) Save() error {
-	dir, err := configDir()
+	path, err := configFilePath()
 	if err != nil {
 		return err
 	}
+	dir := filepath.Dir(path)
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return err
 	}
@@ -77,7 +95,7 @@ func (c *CLIConfig) Save() error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(filepath.Join(dir, configFileName), data, 0600)
+	return os.WriteFile(path, data, 0600)
 }
 
 // HTTPURL returns the base URL for the REST API.
@@ -93,6 +111,16 @@ func (c *CLIConfig) TCPAddr() string {
 // UDPAddr returns the UDP server address string.
 func (c *CLIConfig) UDPAddr() string {
 	return fmt.Sprintf("%s:%s", c.ServerHost, c.UDPPort)
+}
+
+// WSURL returns the WebSocket upgrade URL.
+func (c *CLIConfig) WSURL() string {
+	return fmt.Sprintf("ws://%s:%s/ws", c.ServerHost, c.WSPort)
+}
+
+// GRPCAddr returns the gRPC server address.
+func (c *CLIConfig) GRPCAddr() string {
+	return fmt.Sprintf("%s:%s", c.ServerHost, c.GRPCPort)
 }
 
 // IsLoggedIn returns true when a JWT token is persisted.

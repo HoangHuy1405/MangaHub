@@ -28,12 +28,15 @@ func main() {
 
 	// Wire all commands
 	root.AddCommand(
+		commands.NewServerCmd(cfg),
 		commands.NewAuthCmd(cfg),
 		commands.NewMangaCmd(cfg),
 		commands.NewLibraryCmd(cfg),
 		commands.NewProgressCmd(cfg),
 		commands.NewSyncCmd(cfg),
 		commands.NewNotifyCmd(cfg),
+		commands.NewChatCmd(cfg),
+		commands.NewGRPCCmd(cfg),
 	)
 
 	if err := root.Execute(); err != nil {

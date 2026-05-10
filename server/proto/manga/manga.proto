@@ -1,0 +1,76 @@
+syntax = "proto3";
+
+package manga;
+
+option go_package = "mangahub/proto/manga";
+
+// ==================== SERVICE DEFINITION ====================
+
+// MangaService provides internal gRPC access to manga data and user progress.
+// It is designed as a centralized Internal Data Engine — other modules (HTTP, TCP)
+// can call these RPCs instead of duplicating DB access logic.
+service MangaService {
+  // GetManga retrieves detailed information for a single manga by ID (Unary RPC).
+  rpc GetManga(GetMangaRequest) returns (MangaResponse);
+
+  // SearchManga performs filtered search across the manga catalog (Unary RPC).
+  rpc SearchManga(SearchRequest) returns (SearchResponse);
+
+  // UpdateProgress updates a user's reading progress for a manga (Unary RPC).
+  rpc UpdateProgress(ProgressRequest) returns (ProgressResponse);
+}
+
+// ==================== MESSAGE DEFINITIONS ====================
+
+// --- GetManga ---
+message GetMangaRequest {
+  string manga_id = 1;
+}
+
+message MangaResponse {
+  string id             = 1;
+  string title          = 2;
+  string author         = 3;
+  string description    = 4;
+  string cover_url      = 5;
+  int32  total_chapters = 6;
+  string status         = 7; // "ongoing" | "completed"
+  string genres         = 8; // JSON array stored as string
+}
+
+// --- SearchManga ---
+message SearchRequest {
+  string query  = 1; // search keyword
+  string genre  = 2; // filter by genre (optional)
+  int32  page   = 3;
+  int32  limit  = 4;
+  string status = 5; // filter by status: "ongoing" or "completed" (optional)
+}
+
+// MangaListItem is a lightweight version of MangaResponse for search/list operations
+message MangaListItem {
+  string id             = 1;
+  string title          = 2;
+  string author         = 3;
+  string cover_url      = 4;
+  int32  total_chapters = 5;
+  string status         = 6;
+}
+
+message SearchResponse {
+  repeated MangaListItem results = 1;
+  int32 total = 2;
+}
+
+// --- UpdateProgress ---
+message ProgressRequest {
+  string user_id    = 1;
+  string manga_id   = 2;
+  int32  chapter    = 3;
+  int64  updated_at = 4; // Unix timestamp
+}
+
+message ProgressResponse {
+  bool   success = 1;
+  string message = 2;
+}
