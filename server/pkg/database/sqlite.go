@@ -30,6 +30,7 @@ func InitDB(dbPath string) (*sql.DB, error) {
 	CREATE TABLE IF NOT EXISTS users (
 		id            INTEGER PRIMARY KEY AUTOINCREMENT,
 		username      TEXT    NOT NULL UNIQUE,
+		email         TEXT    NOT NULL UNIQUE,
 		password_hash TEXT    NOT NULL,
 		created_at    DATETIME DEFAULT CURRENT_TIMESTAMP
 	);
@@ -71,7 +72,8 @@ func InitDB(dbPath string) (*sql.DB, error) {
 		user_id         INTEGER NOT NULL,
 		manga_id        TEXT    NOT NULL,
 		current_chapter INTEGER NOT NULL DEFAULT 0,
-		status          TEXT    NOT NULL CHECK(status IN ('reading', 'completed', 'plan_to_read')),
+		status          TEXT    NOT NULL CHECK(status IN ('reading', 'completed', 'plan_to_read', 'on_hold', 'dropped')),
+		rating          INTEGER DEFAULT 0,
 		updated_at      DATETIME DEFAULT CURRENT_TIMESTAMP,
 		PRIMARY KEY (user_id, manga_id),
 		FOREIGN KEY (user_id)  REFERENCES users(id),

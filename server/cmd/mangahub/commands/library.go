@@ -102,15 +102,18 @@ func newLibraryListCmd(cfg *cliclient.CLIConfig) *cobra.Command {
 				return fmt.Errorf("failed to fetch library: %s", resp.Message)
 			}
 
-			var library []struct {
-				MangaID        string `json:"manga_id"`
-				CurrentChapter int    `json:"current_chapter"`
-				Status         string `json:"status"`
-				UpdatedAt      string `json:"updated_at"`
+			var data struct {
+				Library []struct {
+					MangaID        string `json:"manga_id"`
+					CurrentChapter int    `json:"current_chapter"`
+					Status         string `json:"status"`
+					UpdatedAt      string `json:"updated_at"`
+				} `json:"library"`
 			}
-			if err := json.Unmarshal(resp.Data, &library); err != nil {
+			if err := json.Unmarshal(resp.Data, &data); err != nil {
 				return fmt.Errorf("parse error: %w", err)
 			}
+			library := data.Library
 
 			if len(library) == 0 {
 				fmt.Println("Your library is empty.")
@@ -156,13 +159,36 @@ func newLibraryUpdateCmd(cfg *cliclient.CLIConfig) *cobra.Command {
 			if mangaID == "" {
 				return fmt.Errorf("--manga-id is required")
 			}
-			if status == "" {
-				return fmt.Errorf("--status is required")
-			}
-			status = strings.ReplaceAll(status, "-", "_")
 			h := cliclient.NewHTTPClient(cfg)
+
+			if status == "" {
+				libResp, err := h.Get("/users/library")
+				if err != nil || !libResp.Success {
+					return fmt.Errorf("--status is required (could not fetch existing status)")
+				}
+				var data struct {
+					Library []struct {
+						MangaID string `json:"manga_id"`
+						Status  string `json:"status"`
+					} `json:"library"`
+				}
+				if json.Unmarshal(libResp.Data, &data) == nil {
+					for _, item := range data.Library {
+						if item.MangaID == mangaID {
+							status = item.Status
+							break
+						}
+					}
+				}
+				if status == "" {
+					return fmt.Errorf("--status is required (manga not found in library)")
+				}
+			}
+
+			status = strings.ReplaceAll(status, "-", "_")
 			payload := map[string]interface{}{
-				"status": status,
+				"manga_id": mangaID,
+				"status":   status,
 			}
 			if rating > 0 {
 				payload["rating"] = rating

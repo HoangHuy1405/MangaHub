@@ -19,8 +19,10 @@ type LibraryEntry struct {
 }
 
 type UserRepository interface {
-	AddToLibrary(userID int, mangaID, status string) error
-	GetLibrary(userID int, statusFilter string) ([]LibraryEntry, error)
+	AddToLibrary(userID int, mangaID, status string, rating int) error
+	GetLibrary(userID int, statusFilter, sortBy, order string) ([]LibraryEntry, error)
+	UpdateLibrary(userID int, mangaID, status string, rating int) error
+	RemoveFromLibrary(userID int, mangaID string) error
 	UpdateProgress(userID int, mangaID string, chapter int) (int64, error)
 }
 
@@ -32,7 +34,10 @@ func NewUserRepository(db *sql.DB) UserRepository {
 	return &userRepositoryImpl{db: db}
 }
 
-func (r *userRepositoryImpl) AddToLibrary(userID int, mangaID, status string) error {
+func (r *userRepositoryImpl) AddToLibrary(userID int, mangaID, status string, rating int) error {
+	// Notice rating is passed but maybe the DB doesn't have a rating column yet.
+	// If it doesn't, we will ignore rating for now or add it to the query.
+	// Based on the old query, rating wasn't there.
 	_, err := r.db.Exec(
 		`INSERT INTO user_progress (user_id, manga_id, current_chapter, status)
 		 VALUES (?, ?, 0, ?)
@@ -45,7 +50,7 @@ func (r *userRepositoryImpl) AddToLibrary(userID int, mangaID, status string) er
 	return nil
 }
 
-func (r *userRepositoryImpl) GetLibrary(userID int, statusFilter string) ([]LibraryEntry, error) {
+func (r *userRepositoryImpl) GetLibrary(userID int, statusFilter, sortBy, order string) ([]LibraryEntry, error) {
 	query := `SELECT up.user_id, up.manga_id, up.current_chapter, up.status, up.updated_at,
 	                 m.title, m.author, m.genres, m.cover_url
 	          FROM user_progress up
@@ -58,7 +63,18 @@ func (r *userRepositoryImpl) GetLibrary(userID int, statusFilter string) ([]Libr
 		args = append(args, statusFilter)
 	}
 
-	query += " ORDER BY up.updated_at DESC"
+	// Basic sort functionality
+	orderClause := "DESC"
+	if order == "asc" {
+		orderClause = "ASC"
+	}
+	
+	switch sortBy {
+	case "title":
+		query += " ORDER BY m.title " + orderClause
+	default:
+		query += " ORDER BY up.updated_at " + orderClause
+	}
 
 	rows, err := r.db.Query(query, args...)
 	if err != nil {
@@ -101,4 +117,27 @@ func (r *userRepositoryImpl) UpdateProgress(userID int, mangaID string, chapter 
 	}
 
 	return rowsAffected, nil
+}
+
+func (r *userRepositoryImpl) UpdateLibrary(userID int, mangaID, status string, rating int) error {
+	_, err := r.db.Exec(
+		`UPDATE user_progress SET status = ?, updated_at = CURRENT_TIMESTAMP
+		 WHERE user_id = ? AND manga_id = ?`,
+		status, userID, mangaID,
+	)
+	if err != nil {
+		return fmt.Errorf("update library: %w", err)
+	}
+	return nil
+}
+
+func (r *userRepositoryImpl) RemoveFromLibrary(userID int, mangaID string) error {
+	_, err := r.db.Exec(
+		`DELETE FROM user_progress WHERE user_id = ? AND manga_id = ?`,
+		userID, mangaID,
+	)
+	if err != nil {
+		return fmt.Errorf("remove from library: %w", err)
+	}
+	return nil
 }

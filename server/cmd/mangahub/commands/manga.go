@@ -3,8 +3,12 @@ package commands
 import (
 	"encoding/json"
 	"fmt"
+	"net/url"
+	"os"
 	"strings"
 
+	"github.com/olekukonko/tablewriter"
+	"github.com/olekukonko/tablewriter/tw"
 	"github.com/spf13/cobra"
 
 	cliclient "mangahub/internal/cliclient"
@@ -37,15 +41,15 @@ func newMangaSearchCmd(cfg *cliclient.CLIConfig) *cobra.Command {
 			query := strings.Join(args, " ")
 			fmt.Printf("Searching for \"%s\"...\n", query)
 
-			path := fmt.Sprintf("/manga?search=%s", query)
+			path := fmt.Sprintf("/manga?search=%s", url.QueryEscape(query))
 			if genre != "" {
-				path += "&genre=" + genre
+				path += "&genre=" + url.QueryEscape(genre)
 			}
 			if status != "" {
-				path += "&status=" + status
+				path += "&status=" + url.QueryEscape(status)
 			}
 			if author != "" {
-				path += "&author=" + author
+				path += "&author=" + url.QueryEscape(author)
 			}
 			if yearFrom > 0 {
 				path += fmt.Sprintf("&year-from=%d", yearFrom)
@@ -57,10 +61,10 @@ func newMangaSearchCmd(cfg *cliclient.CLIConfig) *cobra.Command {
 				path += fmt.Sprintf("&min-chapters=%d", minChapters)
 			}
 			if sortBy != "" {
-				path += "&sort-by=" + sortBy
+				path += "&sort-by=" + url.QueryEscape(sortBy)
 			}
 			if order != "" {
-				path += "&order=" + order
+				path += "&order=" + url.QueryEscape(order)
 			}
 			if limit > 0 {
 				path += fmt.Sprintf("&pageSize=%d", limit)
@@ -100,20 +104,23 @@ func newMangaSearchCmd(cfg *cliclient.CLIConfig) *cobra.Command {
 			}
 
 			fmt.Printf("Found %d result(s):\n\n", data.Meta.Total)
-			fmt.Printf("%-28s %-35s %-20s %-12s %s\n", "ID", "Title", "Author", "Status", "Chapters")
-			fmt.Println(strings.Repeat("─", 105))
+
+			table := tablewriter.NewTable(os.Stdout,
+				tablewriter.WithConfig(tablewriter.Config{
+					Row: tw.CellConfig{
+						Formatting:   tw.CellFormatting{AutoWrap: tw.WrapNormal},
+						Alignment:    tw.CellAlignment{Global: tw.AlignLeft},
+						ColMaxWidths: tw.CellWidth{Global: 35},
+					},
+				}),
+			)
+			table.Header("ID", "Title", "Author", "Status", "Chapters")
+			var tableData [][]any
 			for _, m := range data.Manga {
-				title := m.Title
-				if len(title) > 33 {
-					title = title[:30] + "..."
-				}
-				author := m.Author
-				if len(author) > 18 {
-					author = author[:15] + "..."
-				}
-				fmt.Printf("%-28s %-35s %-20s %-12s %d\n",
-					m.ID, title, author, m.Status, m.TotalChapters)
+				tableData = append(tableData, []any{m.ID, m.Title, m.Author, m.Status, m.TotalChapters})
 			}
+			table.Bulk(tableData)
+			table.Render()
 			fmt.Println()
 			fmt.Println("Use 'mangahub manga info <id>' to view details")
 			fmt.Println("Use 'mangahub library add --manga-id <id>' to add to your library")
@@ -160,9 +167,49 @@ func newMangaInfoCmd(cfg *cliclient.CLIConfig) *cobra.Command {
 				TotalChapters int    `json:"total_chapters"`
 				Description   string `json:"description"`
 				Year          int    `json:"year"`
+				Relationships []struct {
+					Type string  `json:"type"`
+					Name *string `json:"name"`
+				} `json:"relationships"`
 			}
 			if err := json.Unmarshal(resp.Data, &m); err != nil {
 				return fmt.Errorf("failed to parse manga data: %w", err)
+			}
+
+			type UserProg struct {
+				CurrentChapter int    `json:"current_chapter"`
+				Status         string `json:"status"`
+				UpdatedAt      string `json:"updated_at"`
+				Rating         int    `json:"rating"`
+			}
+			var userProg *UserProg
+
+			if cfg.IsLoggedIn() {
+				libResp, err := h.Get("/users/library")
+				if err == nil && libResp.Success {
+					var data struct {
+						Library []struct {
+							MangaID        string `json:"manga_id"`
+							CurrentChapter int    `json:"current_chapter"`
+							Status         string `json:"status"`
+							UpdatedAt      string `json:"updated_at"`
+							Rating         int    `json:"rating"`
+						} `json:"library"`
+					}
+					if json.Unmarshal(libResp.Data, &data) == nil {
+						for _, item := range data.Library {
+							if item.MangaID == id {
+								userProg = &UserProg{
+									CurrentChapter: item.CurrentChapter,
+									Status:         item.Status,
+									UpdatedAt:      item.UpdatedAt,
+									Rating:         item.Rating,
+								}
+								break
+							}
+						}
+					}
+				}
 			}
 
 			border := strings.Repeat("─", 69)
@@ -173,24 +220,68 @@ func newMangaInfoCmd(cfg *cliclient.CLIConfig) *cobra.Command {
 				pad = 0
 			}
 			fmt.Printf("│%s%s%s│\n", strings.Repeat(" ", pad), title, strings.Repeat(" ", 69-pad-len(title)))
-			fmt.Printf("└%s┘\n\n", border)
+			fmt.Printf("└%s┘\n", border)
+			
+			fmt.Println("Basic Information:")
 			fmt.Printf("ID:             %s\n", m.ID)
 			fmt.Printf("Title:          %s\n", m.Title)
 			fmt.Printf("Author:         %s\n", m.Author)
-			fmt.Printf("Genres:         %s\n", m.Genres)
-			fmt.Printf("Status:         %s\n", m.Status)
-			fmt.Printf("Year:           %d\n", m.Year)
-			fmt.Printf("Total Chapters: %d\n\n", m.TotalChapters)
-			if m.Description != "" {
-				desc := m.Description
-				if len(desc) > 200 {
-					desc = desc[:200] + "..."
+			for _, r := range m.Relationships {
+				if r.Type == "artist" && r.Name != nil {
+					fmt.Printf("Artist:         %s\n", *r.Name)
+					break
 				}
-				fmt.Printf("Description:\n%s\n\n", desc)
 			}
-			fmt.Println("Actions:")
-			fmt.Printf("  Add to Library: mangahub library add --manga-id %s --status reading\n", id)
-			fmt.Printf("  Update Progress: mangahub progress update --manga-id %s --chapter <number>\n", id)
+			
+			var genres []string
+			if err := json.Unmarshal([]byte(m.Genres), &genres); err == nil {
+				fmt.Printf("Genres:         %s\n", strings.Join(genres, ", "))
+			} else {
+				fmt.Printf("Genres:         %s\n", m.Genres)
+			}
+			fmt.Printf("Status:         %s\n", strings.Title(m.Status))
+			if m.Year > 0 {
+				fmt.Printf("Year:           %d\n", m.Year)
+			}
+			
+			
+			fmt.Println("\nDescription:")
+			if m.Description != "" {
+				fmt.Printf("%s\n\n", m.Description)
+			} else {
+				fmt.Printf("No description available.\n\n")
+			}
+			
+			fmt.Println("\nProgress:")
+			fmt.Printf("Total Chapters: %d\n", m.TotalChapters)
+			
+			if userProg != nil {
+				statusFormatted := strings.Title(strings.ReplaceAll(userProg.Status, "_", " "))
+				fmt.Printf("Your Status:    %s\n", statusFormatted)
+				fmt.Printf("Current Chapter: %d\n", userProg.CurrentChapter)
+				
+				updated := userProg.UpdatedAt
+				if len(updated) > 19 {
+					updated = strings.Replace(updated, "T", " ", 1)[:19]
+				}
+				fmt.Printf("Last Updated:   %s\n", updated)
+				if userProg.Rating > 0 {
+					fmt.Printf("Personal Rating: %d/10\n", userProg.Rating)
+				}
+			}
+			
+			fmt.Println("\nExternal Links:")
+			fmt.Printf("MangaDx:        https://mangadx.org/title/%s\n", m.ID)
+
+			fmt.Println("\nActions:")
+			if userProg != nil {
+				fmt.Printf("  Update Progress: mangahub progress update --manga-id %s --chapter <number>\n", id)
+				fmt.Printf("  Rate/Review:     mangahub library update --manga-id %s --rating <score>\n", id)
+				fmt.Printf("  Remove:          mangahub library remove --manga-id %s\n", id)
+			} else {
+				fmt.Printf("  Add to Library:  mangahub library add --manga-id %s --status reading\n", id)
+				fmt.Printf("  Update Progress: mangahub progress update --manga-id %s --chapter <number>\n", id)
+			}
 			return nil
 		},
 	}
@@ -199,16 +290,37 @@ func newMangaInfoCmd(cfg *cliclient.CLIConfig) *cobra.Command {
 // ── list ──────────────────────────────────────────────────────────────────────
 
 func newMangaListCmd(cfg *cliclient.CLIConfig) *cobra.Command {
-	var genre string
-	var page, limit int
+	var genre, status, author, sortBy, order string
+	var yearFrom, yearTo, minChapters, page, limit int
 	cmd := &cobra.Command{
 		Use:     "list",
 		Short:   "List all manga in the database",
-		Example: "  mangahub manga list\n  mangahub manga list --genre shounen --page 2",
+		Example: "  mangahub manga list\n  mangahub manga list --genre shounen --page 2\n  mangahub manga list --status ongoing --sort-by popularity",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			path := fmt.Sprintf("/manga?page=%d&pageSize=%d", page, limit)
 			if genre != "" {
-				path += "&genre=" + genre
+				path += "&genre=" + url.QueryEscape(genre)
+			}
+			if status != "" {
+				path += "&status=" + url.QueryEscape(status)
+			}
+			if author != "" {
+				path += "&author=" + url.QueryEscape(author)
+			}
+			if yearFrom > 0 {
+				path += fmt.Sprintf("&year-from=%d", yearFrom)
+			}
+			if yearTo > 0 {
+				path += fmt.Sprintf("&year-to=%d", yearTo)
+			}
+			if minChapters > 0 {
+				path += fmt.Sprintf("&min-chapters=%d", minChapters)
+			}
+			if sortBy != "" {
+				path += "&sort-by=" + url.QueryEscape(sortBy)
+			}
+			if order != "" {
+				path += "&order=" + url.QueryEscape(order)
 			}
 			h := cliclient.NewHTTPClient(cfg)
 			resp, err := h.Get(path)
@@ -220,10 +332,11 @@ func newMangaListCmd(cfg *cliclient.CLIConfig) *cobra.Command {
 			}
 			var data struct {
 				Manga []struct {
-					ID     string `json:"id"`
-					Title  string `json:"title"`
-					Status string `json:"status"`
-					Year   int    `json:"year"`
+					ID            string `json:"id"`
+					Title         string `json:"title"`
+					Status        string `json:"status"`
+					Year          int    `json:"year"`
+					TotalChapters int    `json:"total_chapters"`
 				} `json:"manga"`
 				Meta struct {
 					Page     int `json:"page"`
@@ -237,15 +350,24 @@ func newMangaListCmd(cfg *cliclient.CLIConfig) *cobra.Command {
 			}
 			fmt.Printf("Manga List — Page %d/%d (Total: %d)\n\n",
 				data.Meta.Page, data.Meta.Pages, data.Meta.Total)
-			fmt.Printf("%-30s %-40s %-12s %s\n", "ID", "Title", "Status", "Year")
-			fmt.Println(strings.Repeat("─", 90))
+				
+			table := tablewriter.NewTable(os.Stdout,
+				tablewriter.WithConfig(tablewriter.Config{
+					Row: tw.CellConfig{
+						Formatting:   tw.CellFormatting{AutoWrap: tw.WrapNormal},
+						Alignment:    tw.CellAlignment{Global: tw.AlignLeft},
+						ColMaxWidths: tw.CellWidth{Global: 40},
+					},
+				}),
+			)
+			table.Header("ID", "Title", "Status", "Year", "Chapters")
+
+			var tableData [][]any
 			for _, m := range data.Manga {
-				title := m.Title
-				if len(title) > 38 {
-					title = title[:35] + "..."
-				}
-				fmt.Printf("%-30s %-40s %-12s %d\n", m.ID, title, m.Status, m.Year)
+				tableData = append(tableData, []any{m.ID, m.Title, m.Status, m.Year, m.TotalChapters})
 			}
+			table.Bulk(tableData)
+			table.Render()
 			if data.Meta.Page < data.Meta.Pages {
 				fmt.Printf("\nNext page: mangahub manga list --page %d\n", data.Meta.Page+1)
 			}
@@ -253,6 +375,13 @@ func newMangaListCmd(cfg *cliclient.CLIConfig) *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVar(&genre, "genre", "", "Filter by genre")
+	cmd.Flags().StringVar(&status, "status", "", "Filter by status (ongoing/completed)")
+	cmd.Flags().StringVar(&author, "author", "", "Filter by author")
+	cmd.Flags().IntVar(&yearFrom, "year-from", 0, "Minimum year")
+	cmd.Flags().IntVar(&yearTo, "year-to", 0, "Maximum year")
+	cmd.Flags().IntVar(&minChapters, "min-chapters", 0, "Minimum chapters")
+	cmd.Flags().StringVar(&sortBy, "sort-by", "", "Sort by (popularity/title/year)")
+	cmd.Flags().StringVar(&order, "order", "", "Sort order (asc/desc)")
 	cmd.Flags().IntVar(&page, "page", 1, "Page number")
 	cmd.Flags().IntVar(&limit, "limit", 20, "Results per page")
 	return cmd

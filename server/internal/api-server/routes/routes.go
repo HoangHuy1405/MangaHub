@@ -18,7 +18,7 @@ func SetupRouter(
 
 	v1 := r.Group("/api/v1")
 	{
-		RegisterAuthRoutes(v1, authHandler)
+		RegisterAuthRoutes(v1, authHandler, cfg.API_CONFIG.JWT_SECRET)
 		RegisterMangaRoutes(v1, mangaHandler)
 		RegisterUserRoutes(v1, userHandler, cfg.API_CONFIG.JWT_SECRET)
 		RegisterNotifyRoutes(v1, notifyHandler)

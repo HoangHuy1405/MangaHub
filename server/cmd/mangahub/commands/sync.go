@@ -120,6 +120,7 @@ func newSyncStatusCmd(cfg *cliclient.CLIConfig) *cobra.Command {
 	return &cobra.Command{
 		Use:   "status",
 		Short: "Check TCP sync server reachability",
+		RunE: func(cmd *cobra.Command, args []string) error {
 			fmt.Printf("TCP Sync Status:\n")
 			
 			if !cfg.IsLoggedIn() {

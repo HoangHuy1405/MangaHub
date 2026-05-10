@@ -11,6 +11,8 @@ type AuthRepository interface {
 	CreateUser(username, email, passwordHash string) (int64, error)
 	FindByUsername(username string) (*models.User, error)
 	FindByEmail(email string) (*models.User, error)
+	FindByID(userID int64) (*models.User, error)
+	UpdatePassword(userID int64, newPasswordHash string) error
 }
 
 type authRepositoryImpl struct {
@@ -70,4 +72,42 @@ func (r *authRepositoryImpl) FindByEmail(email string) (*models.User, error) {
 	}
 
 	return &user, nil
+}
+
+func (r *authRepositoryImpl) FindByID(userID int64) (*models.User, error) {
+	var user models.User
+	err := r.db.QueryRow(
+		"SELECT id, username, email, password_hash FROM users WHERE id = ?",
+		userID,
+	).Scan(&user.ID, &user.Username, &user.Email, &user.PasswordHash)
+
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("query user by id: %w", err)
+	}
+
+	return &user, nil
+}
+
+func (r *authRepositoryImpl) UpdatePassword(userID int64, newPasswordHash string) error {
+	result, err := r.db.Exec(
+		"UPDATE users SET password_hash = ? WHERE id = ?",
+		newPasswordHash, userID,
+	)
+	if err != nil {
+		return fmt.Errorf("update password: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("get rows affected: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		return fmt.Errorf("user not found or no changes made")
+	}
+
+	return nil
 }

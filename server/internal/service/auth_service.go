@@ -14,6 +14,8 @@ import (
 type AuthService interface {
 	Register(input models.RegisterInput) (int64, error)
 	Login(input models.LoginInput) (token string, user *models.User, err error)
+	CheckAvailability(username, email string) error
+	ChangePassword(userID int64, oldPassword, newPassword string) error
 }
 
 type authServiceImpl struct {
@@ -33,10 +35,32 @@ func (s *authServiceImpl) Register(input models.RegisterInput) (int64, error) {
 
 	id, err := s.repo.CreateUser(input.Username, input.Email, string(hashedPassword))
 	if err != nil {
-		return 0, ErrConflict
+		return 0, fmt.Errorf("create user: %w", err)
 	}
 
 	return id, nil
+}
+
+func (s *authServiceImpl) CheckAvailability(username, email string) error {
+	if username != "" {
+		u, err := s.repo.FindByUsername(username)
+		if err != nil {
+			return fmt.Errorf("check username: %w", err)
+		}
+		if u != nil {
+			return ErrConflict
+		}
+	}
+	if email != "" {
+		u, err := s.repo.FindByEmail(email)
+		if err != nil {
+			return fmt.Errorf("check email: %w", err)
+		}
+		if u != nil {
+			return ErrConflict
+		}
+	}
+	return nil
 }
 
 func (s *authServiceImpl) Login(input models.LoginInput) (string, *models.User, error) {
@@ -73,4 +97,29 @@ func (s *authServiceImpl) Login(input models.LoginInput) (string, *models.User, 
 	}
 
 	return tokenString, user, nil
+}
+
+func (s *authServiceImpl) ChangePassword(userID int64, oldPassword, newPassword string) error {
+	user, err := s.repo.FindByID(userID)
+	if err != nil {
+		return fmt.Errorf("find user: %w", err)
+	}
+	if user == nil {
+		return ErrNotFound
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(oldPassword)); err != nil {
+		return ErrUnauthorized
+	}
+
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return fmt.Errorf("hash new password: %w", err)
+	}
+
+	if err := s.repo.UpdatePassword(userID, string(hashedPassword)); err != nil {
+		return fmt.Errorf("update password: %w", err)
+	}
+
+	return nil
 }
