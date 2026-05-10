@@ -12,6 +12,7 @@ func SetupRouter(
 	authHandler *handlers.AuthHandler,
 	mangaHandler *handlers.MangaHandler,
 	userHandler *handlers.UserHandler,
+	notifyHandler *handlers.NotifyHandler,
 ) *gin.Engine {
 	r := gin.Default()
 
@@ -20,6 +21,7 @@ func SetupRouter(
 		RegisterAuthRoutes(v1, authHandler)
 		RegisterMangaRoutes(v1, mangaHandler)
 		RegisterUserRoutes(v1, userHandler, cfg.API_CONFIG.JWT_SECRET)
+		RegisterNotifyRoutes(v1, notifyHandler)
 	}
 
 	return r
