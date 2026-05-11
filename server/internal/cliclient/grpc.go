@@ -90,3 +90,16 @@ func (g *GRPCClient) UpdateProgress(userID, mangaID string, chapter int) (*pb.Pr
 		UpdatedAt: time.Now().Unix(),
 	})
 }
+
+// AddToLibrary calls the AddToLibrary RPC with a 5-second timeout.
+func (g *GRPCClient) AddToLibrary(userID, mangaID, status string, rating int) (*pb.AddLibraryResponse, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	return g.client.AddToLibrary(ctx, &pb.AddLibraryRequest{
+		UserId:  userID,
+		MangaId: mangaID,
+		Status:  status,
+		Rating:  int32(rating),
+	})
+}

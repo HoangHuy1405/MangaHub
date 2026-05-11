@@ -22,6 +22,7 @@ This proves the internal data engine works independently from the REST API.`,
 	cmd.AddCommand(
 		newGRPCMangaCmd(cfg),
 		newGRPCProgressCmd(cfg),
+		newGRPCLibraryCmd(cfg),
 	)
 	return cmd
 }
@@ -209,6 +210,65 @@ func newGRPCProgressUpdateCmd(cfg *cliclient.CLIConfig) *cobra.Command {
 	}
 	cmd.Flags().StringVar(&mangaID, "manga-id", "", "Manga ID (required)")
 	cmd.Flags().IntVar(&chapter, "chapter", 0, "Current chapter number (required)")
+	return cmd
+}
+
+// ── library ──────────────────────────────────────────────────────────────────
+
+func newGRPCLibraryCmd(cfg *cliclient.CLIConfig) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "library",
+		Short: "Library management via gRPC",
+	}
+	cmd.AddCommand(newGRPCLibraryAddCmd(cfg))
+	return cmd
+}
+
+func newGRPCLibraryAddCmd(cfg *cliclient.CLIConfig) *cobra.Command {
+	var mangaID, status string
+	var rating int
+
+	cmd := &cobra.Command{
+		Use:   "add",
+		Short: "Add manga to library via gRPC",
+		Example: `  mangahub grpc library add --manga-id "some-id"`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if !cfg.IsLoggedIn() {
+				return fmt.Errorf("✗ Not logged in. Run: mangahub auth login --username <username>")
+			}
+			if mangaID == "" {
+				return fmt.Errorf("--manga-id is required")
+			}
+
+			fmt.Printf("Connecting to gRPC server at %s...\n", cfg.GRPCAddr())
+
+			client := cliclient.NewGRPCClient(cfg)
+			if err := client.Connect(); err != nil {
+				return fmt.Errorf("✗ %v", err)
+			}
+			defer client.Close()
+
+			userID := cfg.Username
+			if uid := extractUserIDFromConfig(cfg); uid != "" {
+				userID = uid
+			}
+
+			resp, err := client.AddToLibrary(userID, mangaID, status, rating)
+			if err != nil {
+				return handleGRPCError("AddToLibrary", err)
+			}
+
+			if resp.GetSuccess() {
+				fmt.Printf("\n✓ %s\n", resp.GetMessage())
+			} else {
+				fmt.Printf("\n✗ %s\n", resp.GetMessage())
+			}
+			return nil
+		},
+	}
+	cmd.Flags().StringVar(&mangaID, "manga-id", "", "Manga ID (required)")
+	cmd.Flags().StringVar(&status, "status", "plan_to_read", "Reading status (reading/completed/plan_to_read/on_hold/dropped)")
+	cmd.Flags().IntVar(&rating, "rating", 0, "Personal rating (1-10)")
 	return cmd
 }
 

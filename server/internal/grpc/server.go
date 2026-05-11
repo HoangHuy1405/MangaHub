@@ -155,6 +155,51 @@ func (s *mangaServer) UpdateProgress(ctx context.Context, req *pb.ProgressReques
 	}, nil
 }
 
+// AddToLibrary adds a manga to the user's library.
+func (s *mangaServer) AddToLibrary(ctx context.Context, req *pb.AddLibraryRequest) (*pb.AddLibraryResponse, error) {
+	log.Printf("[gRPC] AddToLibrary request: user_id=%s manga_id=%s status=%s",
+		req.GetUserId(), req.GetMangaId(), req.GetStatus())
+
+	if req.GetUserId() == "" {
+		return nil, status.Error(codes.InvalidArgument, "user_id is required")
+	}
+	if req.GetMangaId() == "" {
+		return nil, status.Error(codes.InvalidArgument, "manga_id is required")
+	}
+
+	statusVal := req.GetStatus()
+	if statusVal == "" {
+		statusVal = "plan_to_read"
+	}
+
+	userID, err := strconv.Atoi(req.GetUserId())
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "invalid user_id: %s (must be numeric)", req.GetUserId())
+	}
+
+	exists, err := s.mangaRepo.Exists(req.GetMangaId())
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "check manga existence: %v", err)
+	}
+	if !exists {
+		return nil, status.Errorf(codes.NotFound, "manga not found: id=%s", req.GetMangaId())
+	}
+
+	err = s.userRepo.AddToLibrary(userID, req.GetMangaId(), statusVal, int(req.GetRating()))
+	if err != nil {
+		log.Printf("[gRPC] AddToLibrary DB error: %v", err)
+		return nil, status.Errorf(codes.Internal, "failed to add to library: %v", err)
+	}
+
+	msg := fmt.Sprintf("Added manga %s to library for user %s with status %s", req.GetMangaId(), req.GetUserId(), statusVal)
+	log.Printf("[gRPC] %s", msg)
+
+	return &pb.AddLibraryResponse{
+		Success: true,
+		Message: msg,
+	}, nil
+}
+
 // mangaToProto maps a Go model to a protobuf MangaResponse.
 func mangaToProto(m *models.Manga) *pb.MangaResponse {
 	return &pb.MangaResponse{

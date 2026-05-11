@@ -501,6 +501,127 @@ func (x *ProgressResponse) GetMessage() string {
 	return ""
 }
 
+// --- AddToLibrary ---
+type AddLibraryRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	MangaId       string                 `protobuf:"bytes,2,opt,name=manga_id,json=mangaId,proto3" json:"manga_id,omitempty"`
+	Status        string                 `protobuf:"bytes,3,opt,name=status,proto3" json:"status,omitempty"`  // "reading", "completed", "plan_to_read", etc.
+	Rating        int32                  `protobuf:"varint,4,opt,name=rating,proto3" json:"rating,omitempty"` // optional
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AddLibraryRequest) Reset() {
+	*x = AddLibraryRequest{}
+	mi := &file_manga_manga_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AddLibraryRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AddLibraryRequest) ProtoMessage() {}
+
+func (x *AddLibraryRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_manga_manga_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AddLibraryRequest.ProtoReflect.Descriptor instead.
+func (*AddLibraryRequest) Descriptor() ([]byte, []int) {
+	return file_manga_manga_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *AddLibraryRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+func (x *AddLibraryRequest) GetMangaId() string {
+	if x != nil {
+		return x.MangaId
+	}
+	return ""
+}
+
+func (x *AddLibraryRequest) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
+func (x *AddLibraryRequest) GetRating() int32 {
+	if x != nil {
+		return x.Rating
+	}
+	return 0
+}
+
+type AddLibraryResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	Message       string                 `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AddLibraryResponse) Reset() {
+	*x = AddLibraryResponse{}
+	mi := &file_manga_manga_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AddLibraryResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AddLibraryResponse) ProtoMessage() {}
+
+func (x *AddLibraryResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_manga_manga_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AddLibraryResponse.ProtoReflect.Descriptor instead.
+func (*AddLibraryResponse) Descriptor() ([]byte, []int) {
+	return file_manga_manga_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *AddLibraryResponse) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
+func (x *AddLibraryResponse) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
 var File_manga_manga_proto protoreflect.FileDescriptor
 
 const file_manga_manga_proto_rawDesc = "" +
@@ -541,11 +662,20 @@ const file_manga_manga_proto_rawDesc = "" +
 	"updated_at\x18\x04 \x01(\x03R\tupdatedAt\"F\n" +
 	"\x10ProgressResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x18\n" +
-	"\amessage\x18\x02 \x01(\tR\amessage2\xc7\x01\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage\"w\n" +
+	"\x11AddLibraryRequest\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x19\n" +
+	"\bmanga_id\x18\x02 \x01(\tR\amangaId\x12\x16\n" +
+	"\x06status\x18\x03 \x01(\tR\x06status\x12\x16\n" +
+	"\x06rating\x18\x04 \x01(\x05R\x06rating\"H\n" +
+	"\x12AddLibraryResponse\x12\x18\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x18\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage2\x8c\x02\n" +
 	"\fMangaService\x128\n" +
 	"\bGetManga\x12\x16.manga.GetMangaRequest\x1a\x14.manga.MangaResponse\x12:\n" +
 	"\vSearchManga\x12\x14.manga.SearchRequest\x1a\x15.manga.SearchResponse\x12A\n" +
-	"\x0eUpdateProgress\x12\x16.manga.ProgressRequest\x1a\x17.manga.ProgressResponseB\x16Z\x14mangahub/proto/mangab\x06proto3"
+	"\x0eUpdateProgress\x12\x16.manga.ProgressRequest\x1a\x17.manga.ProgressResponse\x12C\n" +
+	"\fAddToLibrary\x12\x18.manga.AddLibraryRequest\x1a\x19.manga.AddLibraryResponseB\x16Z\x14mangahub/proto/mangab\x06proto3"
 
 var (
 	file_manga_manga_proto_rawDescOnce sync.Once
@@ -559,26 +689,30 @@ func file_manga_manga_proto_rawDescGZIP() []byte {
 	return file_manga_manga_proto_rawDescData
 }
 
-var file_manga_manga_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
+var file_manga_manga_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
 var file_manga_manga_proto_goTypes = []any{
-	(*GetMangaRequest)(nil),  // 0: manga.GetMangaRequest
-	(*MangaResponse)(nil),    // 1: manga.MangaResponse
-	(*SearchRequest)(nil),    // 2: manga.SearchRequest
-	(*MangaListItem)(nil),    // 3: manga.MangaListItem
-	(*SearchResponse)(nil),   // 4: manga.SearchResponse
-	(*ProgressRequest)(nil),  // 5: manga.ProgressRequest
-	(*ProgressResponse)(nil), // 6: manga.ProgressResponse
+	(*GetMangaRequest)(nil),    // 0: manga.GetMangaRequest
+	(*MangaResponse)(nil),      // 1: manga.MangaResponse
+	(*SearchRequest)(nil),      // 2: manga.SearchRequest
+	(*MangaListItem)(nil),      // 3: manga.MangaListItem
+	(*SearchResponse)(nil),     // 4: manga.SearchResponse
+	(*ProgressRequest)(nil),    // 5: manga.ProgressRequest
+	(*ProgressResponse)(nil),   // 6: manga.ProgressResponse
+	(*AddLibraryRequest)(nil),  // 7: manga.AddLibraryRequest
+	(*AddLibraryResponse)(nil), // 8: manga.AddLibraryResponse
 }
 var file_manga_manga_proto_depIdxs = []int32{
 	3, // 0: manga.SearchResponse.results:type_name -> manga.MangaListItem
 	0, // 1: manga.MangaService.GetManga:input_type -> manga.GetMangaRequest
 	2, // 2: manga.MangaService.SearchManga:input_type -> manga.SearchRequest
 	5, // 3: manga.MangaService.UpdateProgress:input_type -> manga.ProgressRequest
-	1, // 4: manga.MangaService.GetManga:output_type -> manga.MangaResponse
-	4, // 5: manga.MangaService.SearchManga:output_type -> manga.SearchResponse
-	6, // 6: manga.MangaService.UpdateProgress:output_type -> manga.ProgressResponse
-	4, // [4:7] is the sub-list for method output_type
-	1, // [1:4] is the sub-list for method input_type
+	7, // 4: manga.MangaService.AddToLibrary:input_type -> manga.AddLibraryRequest
+	1, // 5: manga.MangaService.GetManga:output_type -> manga.MangaResponse
+	4, // 6: manga.MangaService.SearchManga:output_type -> manga.SearchResponse
+	6, // 7: manga.MangaService.UpdateProgress:output_type -> manga.ProgressResponse
+	8, // 8: manga.MangaService.AddToLibrary:output_type -> manga.AddLibraryResponse
+	5, // [5:9] is the sub-list for method output_type
+	1, // [1:5] is the sub-list for method input_type
 	1, // [1:1] is the sub-list for extension type_name
 	1, // [1:1] is the sub-list for extension extendee
 	0, // [0:1] is the sub-list for field type_name
@@ -595,7 +729,7 @@ func file_manga_manga_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_manga_manga_proto_rawDesc), len(file_manga_manga_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   7,
+			NumMessages:   9,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

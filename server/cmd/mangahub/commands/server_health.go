@@ -16,6 +16,11 @@ func newServerHealthCmd() *cobra.Command {
 		Use:   "health",
 		Short: "Detailed health check",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Change directory to server dir to ensure config.yaml and data folder resolve correctly
+			if err := os.Chdir(getServerDir()); err != nil {
+				// Ignore error, it will fail gracefully later
+			}
+
 			cfg, err := config.LoadConfig()
 			dbPath := "data/mangahub.db"
 			if err == nil && cfg.API_CONFIG.DB_PATH != "" {

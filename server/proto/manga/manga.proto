@@ -18,6 +18,9 @@ service MangaService {
 
   // UpdateProgress updates a user's reading progress for a manga (Unary RPC).
   rpc UpdateProgress(ProgressRequest) returns (ProgressResponse);
+
+  // AddToLibrary adds a manga to the user's library (Unary RPC).
+  rpc AddToLibrary(AddLibraryRequest) returns (AddLibraryResponse);
 }
 
 // ==================== MESSAGE DEFINITIONS ====================
@@ -71,6 +74,19 @@ message ProgressRequest {
 }
 
 message ProgressResponse {
+  bool   success = 1;
+  string message = 2;
+}
+
+// --- AddToLibrary ---
+message AddLibraryRequest {
+  string user_id  = 1;
+  string manga_id = 2;
+  string status   = 3; // "reading", "completed", "plan_to_read", etc.
+  int32  rating   = 4; // optional
+}
+
+message AddLibraryResponse {
   bool   success = 1;
   string message = 2;
 }
