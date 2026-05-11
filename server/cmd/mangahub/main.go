@@ -39,6 +39,8 @@ func main() {
 		commands.NewGRPCCmd(cfg),
 		commands.NewStatsCmd(cfg),
 		commands.NewExportCmd(cfg),
+		commands.NewConfigCmd(cfg),
+		commands.NewProfileCmd(cfg),
 	)
 
 	if err := root.Execute(); err != nil {

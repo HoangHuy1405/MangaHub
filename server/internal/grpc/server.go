@@ -80,7 +80,7 @@ func (s *mangaServer) SearchManga(ctx context.Context, req *pb.SearchRequest) (*
 		limit = 20
 	}
 
-	mangaList, total, err := s.mangaRepo.GetAll(req.GetGenre(), req.GetStatus(), req.GetQuery(), page, limit)
+	mangaList, total, err := s.mangaRepo.GetAll(req.GetGenre(), req.GetStatus(), req.GetQuery(), "", 0, 0, 0, "", "", page, limit)
 	if err != nil {
 		log.Printf("[gRPC] SearchManga DB error: %v", err)
 		return nil, status.Errorf(codes.Internal, "search failed: %v", err)
