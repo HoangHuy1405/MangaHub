@@ -69,6 +69,13 @@ func isProcessRunning(pid int) bool {
 }
 
 func isPortOpen(protocol, address string) bool {
+	if protocol == "udp" {
+		// net.DialTimeout always succeeds for UDP even if nothing is listening.
+		// We cannot reliably check if a UDP port is open this way.
+		// Rely entirely on PID checks instead.
+		return false
+	}
+	
 	conn, err := net.DialTimeout(protocol, address, 1*time.Second)
 	if err != nil {
 		return false
