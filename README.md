@@ -40,7 +40,7 @@ You can install the CLI globally using `go install`:
 
 ```bash
 cd server
-go mod download
+go mod tidy
 go install ./cmd/mangahub
 ```
 > **Note**: Ensure your Go binary path (`$GOPATH/bin` or `%USERPROFILE%\go\bin`) is added to your system's PATH. Alternatively, you can build the executable directly: `go build -o mangahub.exe ./cmd/mangahub` and run `./mangahub.exe`.
